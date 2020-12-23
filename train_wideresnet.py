@@ -48,6 +48,8 @@ parser.add_argument('--model', default='wideresnet',
                     help='directory of model for saving checkpoint')
 parser.add_argument('--save-freq', '-s', default=1, type=int, metavar='N',
                     help='save frequency')
+parser.add_argument('--data', default='CIFAR10', type=str, help='dataset')
+parser.add_argument('--num-classes', default=10, type=int, help='number of classes')
 
 args = parser.parse_args()
 
@@ -55,11 +57,11 @@ args = parser.parse_args()
 model_dir = args.model
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
-    
+
 log_dir = './log'
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
-    
+
 use_cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 device = torch.device("cuda" if use_cuda else "cpu")
@@ -75,9 +77,18 @@ transform_train = transforms.Compose([
 transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
-trainset = torchvision.datasets.CIFAR10(root='../data_attack/', train=True, download=True, transform=transform_train)
+
+if args.data=='CIFAR10':
+    trainset = torchvision.datasets.CIFAR10(root='../ERAT/data/', train=True, download=True, transform=transform_train)
+    testset = torchvision.datasets.CIFAR10(root='../ERAT/data/', train=False, download=True, transform=transform_test)
+elif args.data == 'SVHN':
+    trainset = torchvision.datasets.SVHN(root='../ERAT/data/', split='train', download=True, transform=transform_train)
+    testset = torchvision.datasets.SVHN(root='../ERAT/data/', split='test', download=True, transform=transform_test)
+elif args.data=='CIFAR100':
+    trainset = torchvision.datasets.CIFAR100(root='../ERAT/data/', train=True, download=True, transform=transform_train)
+    testset = torchvision.datasets.CIFAR100(root='../ERAT/data/', train=False, download=True, transform=transform_test)
+
 train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=10)
-testset = torchvision.datasets.CIFAR10(root='../data_attack/', train=False, download=True, transform=transform_test)
 test_loader = torch.utils.data.DataLoader(testset, batch_size=args.test_batch_size, shuffle=False, num_workers=10)
 
 
@@ -117,7 +128,7 @@ def adjust_learning_rate(optimizer, epoch):
         lr = args.lr * 0.1
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-        
+
 def _pgd_whitebox(model,
                   X,
                   y,
@@ -166,17 +177,17 @@ def eval_adv_test_whitebox(model, device, test_loader):
 
 def main():
 
-    model = WideResNet().to(device)
+    model = WideResNet(num_classes = args.num_classes).to(device)
 
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)   
-    
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+
     natural_acc = []
     robust_acc = []
-    
+
     for epoch in range(1, args.epochs + 1):
         # adjust learning rate for SGD
         adjust_learning_rate(optimizer, epoch)
-        
+
         start_time = time.time()
 
         # adversarial training
@@ -188,20 +199,18 @@ def main():
         natural_err_total, robust_err_total = eval_adv_test_whitebox(model, device, test_loader)
 
         print('using time:', time.time()-start_time)
-        
+
         natural_acc.append(natural_err_total)
         robust_acc.append(robust_err_total)
         print('================================================================')
-        
+
         file_name = os.path.join(log_dir, 'train_stats.npy')
-        np.save(file_name, np.stack((np.array(natural_acc), np.array(robust_acc))))        
+        np.save(file_name, np.stack((np.array(natural_acc), np.array(robust_acc))))
 
         # save checkpoint
         if epoch % args.save_freq == 0:
             torch.save(model.state_dict(),
                        os.path.join(model_dir, 'model-res-epoch{}.pt'.format(epoch)))
-            torch.save(optimizer.state_dict(),
-                       os.path.join(model_dir, 'opt-res-checkpoint_epoch{}.tar'.format(epoch)))
 
 
 if __name__ == '__main__':

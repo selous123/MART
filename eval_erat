@@ -1,0 +1,29 @@
+##
+python main.py \
+    --dataset cifar10 \
+    --eval-method AA --attack_list apgd-ce\
+    --arch wideresnet  --resume ./log/cifar10/wideresnet/ERAT_2.5_2_MSE_0.2_2_2.5_0.0_0.0/model-robust-best.pt\
+    --eval-only 1 --n-ex 10000\
+    --epsilon 0.031\
+    --batch-size 128\
+    --cuda 0
+
+##
+python main.py \
+    --dataset cifar10 \
+    --eval-method AA --attack_list apgd-dlr\
+    --arch wideresnet  --resume ./log/cifar10/wideresnet/ERAT_2.5_2_MSE_0.2_2_2.5_0.0_0.0/model-robust-best.pt\
+    --eval-only 1 --n-ex 10000\
+    --epsilon 0.031\
+    --batch-size 128\
+    --cuda 0
+
+##
+python main.py \
+    --dataset cifar10 \
+    --eval-method PGDLR_20\
+    --arch wideresnet  --resume ./log/cifar10/wideresnet/ERAT_2.5_2_MSE_0.2_2_2.5_0.0_0.0/model-robust-best.pt\
+    --eval-only 1 --n-ex 10000\
+    --epsilon 0.031\
+    --batch-size 128\
+    --cuda 0

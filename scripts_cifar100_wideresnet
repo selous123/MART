@@ -1,0 +1,1 @@
+python train.py --model wideresnet --data CIFAR100 --num-classes 100 --cuda 3
